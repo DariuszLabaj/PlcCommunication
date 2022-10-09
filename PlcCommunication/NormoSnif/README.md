@@ -10,6 +10,13 @@ import socket
 
     frameFactory = Fins.Nx1()
 ```
+### Transmision helper funciton
+```py
+def dataTranssmision(data: bytearray, rcv_size: int) -> bytes:
+    connection.send(data)
+    bytes_received = connection.recv(rcv_size)
+    return bytes_received
+```
 ## Read controller information data
 ```py
     generatedFrame = frameFactory.ControllerDataRead()
