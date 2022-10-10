@@ -142,6 +142,9 @@ def LookupErrorText(data: bytes) -> str:
 class ErrorCode:
     code: int
     text: str
+    relayError: bool
+    plcFatalError: bool
+    plcNonFatalError: bool
 
     @staticmethod
     def from_bytes(data: bytes) -> ErrorCode:
@@ -149,12 +152,29 @@ class ErrorCode:
             errorCode = bytes(bytearray([0xFF, 0xFF]))
             return ErrorCode(
                 int.from_bytes(errorCode, "big", signed=False),
-                LookupErrorText(errorCode),
+                LookupErrorText(errorCode), False, False, False
             )
         try:
+            relayError = ''
+            plcFatalError = ''
+            plcNonFatalError = ''
+            mainError = int.from_bytes(
+                data[0:1], byteorder="big", signed=False)
+            subError = int.from_bytes(data[1:2], byteorder="big", signed=False)
+            if mainError & 0b1000_0000 == 0b1000_0000:
+                relayError = 'Relay Error '
+                mainError &= 0b0111_1111
+            if subError & 0b1000_0000 == 0b1000_0000:
+                plcFatalError = 'PLC Fatal Error '
+                subError &= 0b0111_1111
+            if subError & 0b0100_0000 == 0b0100_0000:
+                plcNonFatalError = 'PLC Non Fatal Error '
+                subError &= 0b1011_1111
+            errorCode = bytes(bytearray([mainError, subError]))
             return ErrorCode(
-                int.from_bytes(data, "big", signed=False),
-                LookupErrorText(data),
+                int.from_bytes(errorCode, "big", signed=False),
+                f'{relayError}{plcFatalError}{plcNonFatalError}{LookupErrorText(errorCode)}',
+                relayError != '', plcFatalError != '', plcNonFatalError != ''
             )
         except ValueError:
             return ErrorCode(
